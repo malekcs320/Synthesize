@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>My App</title>
+</head>
+
+<body>
+    <h1>My App</h1>
+    <form id="get-document">
+        <label>Transcript ID:</label>
+        <input name="transcript" type="text"><br>
+        <label>Notes:</label>
+        <textarea name="notes" required></textarea><br>
+        <button type="submit">Synthesize</button>
+    </form>
+    <br>
+    <label>synthesized:</label>
+    <div id="synthesized-doc-container"></div>
+
+    <script>
+
+        const form = document.querySelector('#get-document');
+        const synthesizedDocContainer = document.querySelector('#synthesized-doc-container');
+
+        async function postData(data) {
+            
+            try {
+                const response = await fetch("/synthesize", {
+                    method: 'POST',
+                    headers: {
+                        'Content-type': 'application/json',
+                        'Accept': 'application/json'
+                    }, body: JSON.stringify(data)
+                });
+
+                const jsonData = await response.json();
+
+                synthesizedDocContainer.innerHTML = jsonData.document;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            data = {
+                'transcript_Id': form.elements.transcript.value,
+                'notes': form.elements.notes.value
+            }
+            postData(data);
+        });
+    </script>
+</body>

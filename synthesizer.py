@@ -4,10 +4,10 @@ import os
 
 class Synthesizer:
     def __init__(self):
-
-        load_dotenv()
-        self.api_key = os.getenv("OPENAI_API_KEY")
         
+        load_dotenv()
+        
+        self.api_key = os.getenv("OPENAI_API_KEY")
         openai.api_key = self.api_key
         self.model_engine = "text-davinci-003"
         
@@ -23,7 +23,7 @@ class Synthesizer:
         response = openai.Completion.create(
             engine=self.model_engine,
             prompt=self.prompt.format(input_transcript=transcript, input_notes=notes),
-            max_tokens=1000,
+            max_tokens=1024,
             n=1,
             stop=None,
             temperature=0.5,
