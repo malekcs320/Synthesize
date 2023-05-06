@@ -2,7 +2,9 @@ from flask import Flask, jsonify, request, render_template
 from synthesizer import Synthesizer
 from db import Database
 from dotenv import load_dotenv
+from rabbitmq.receiver import Receiver
 import os
+
 
 
 
@@ -15,6 +17,8 @@ db = Database(db_uri, 'myDataBase').db
 collection = db["transcripts"]
 
 synthesizer = Synthesizer()
+receiver= Receiver()
+receiver.receive()
 
 
 @app.route('/', methods=['GET', 'POST'])
