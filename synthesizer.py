@@ -18,10 +18,10 @@ class Synthesizer:
         self.model_engine = "text-davinci-003"
         # GPT-3 prompt
         self.prompt = " based on some notes I have taken in class and the this transcription of my professor lecture, \
-        generate a synthesized document for me to help me study. \
         Please arrange the synthesized document with subtitles to help me follow the different parts: \
-        the transcription: \n {input_transcript}\
-        the notes : \n {input_notes} \n "
+        the transcription: \n {input_transcript} \
+        the notes : \n {input_notes} . \
+        recommend 5 internet resources linked to this synthesis,please generate it  a full stylized html format  differenciate titles  paragraphs."
         self.quizz_prompt = " based on this synthesis, \
         give me a 3 question quizz with answers \
         please generate it in a full stylized html format and differenciate answers from question. my fianl goal is to make the answers invesible at first and only show them when the user clicks on a button and make them visible when the user reclicks on it\
@@ -38,7 +38,7 @@ class Synthesizer:
             max_tokens=1024,
             n=1,
             stop=None,
-            temperature=0.5,
+            temperature=0,
         )
         return response.choices[0].text.strip()
     def receive(self):
@@ -68,9 +68,6 @@ class Synthesizer:
             notes = self.notes_collection.find({"_id":ObjectId(notes_id) }).limit(1).next()  
         except StopIteration:
             print("Iteration Error")
-
-        print(transcript)
-        print(notes)
         if not transcript:
             return "Transcript not found."
         if not notes:
@@ -83,8 +80,12 @@ class Synthesizer:
         notes_dict = dict(notes)
         # Synthesize document using Synthesizer
         document = self.generate_summary(transcript_dict['text'], notes_dict['text'])
+        print("************************************\n")
+        f = open("static/synthesis.html", "w")
+        f.write(document)
+        f.close()
         self.quizz=self.generate_quizz(document)
-        f = open("static/index.html", "w")
+        f = open("static/quizz.html", "w")
         f.write(self.quizz)
         f.close()
         print(self.quizz)
