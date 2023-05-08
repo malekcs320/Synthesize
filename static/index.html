@@ -1,56 +1,51 @@
-<!DOCTYPE html>
-<html>
+Quiz: 
 
-<head>
-    <meta charset="UTF-8">
-    <title>My App</title>
-</head>
+<div>
+  <h3>Question 1:</h3>
+  <p>What is the concept of quantum superposition?</p>
+  <button onclick="myFunction()">Show Answer</button>
+  <p id="answer1" style="display:none">A: Quantum superposition is the idea that a particle can exist in multiple states or locations simultaneously.</p>
+</div>
 
-<body>
-    <h1>My App</h1>
-    <form id="get-document">
-        <label>Transcript ID:</label>
-        <input name="transcript" type="text"><br>
-        <label>Notes:</label>
-        <textarea name="notes" required></textarea><br>
-        <button type="submit">Synthesize</button>
-    </form>
-    <br>
-    <label>synthesized:</label>
-    <div id="synthesized-doc-container"></div>
+<div>
+  <h3>Question 2:</h3>
+  <p>What is entanglement?</p>
+  <button onclick="myFunction2()">Show Answer</button>
+  <p id="answer2" style="display:none">A: Entanglement is when two or more particles become linked in such a way that their states are dependent on each other, no matter how far apart they are in space.</p>
+</div>
 
-    <script>
+<div>
+  <h3>Question 3:</h3>
+  <p>What equation is used to calculate the probability of various outcomes in quantum physics?</p>
+  <button onclick="myFunction3()">Show Answer</button>
+  <p id="answer3" style="display:none">A: The Schrödinger equation is used to calculate the probability of various outcomes in quantum physics.</p>
+</div>
 
-        const form = document.querySelector('#get-document');
-        const synthesizedDocContainer = document.querySelector('#synthesized-doc-container');
+<script>
+function myFunction() {
+  var x = document.getElementById("answer1");
+  if (x.style.display === "none") {
+    x.style.display = "block";
+  } else {
+    x.style.display = "none";
+  }
+}
 
-        async function postData(data) {
-            
-            try {
-                const response = await fetch("/synthesize", {
-                    method: 'POST',
-                    headers: {
-                        'Content-type': 'application/json',
-                        'Accept': 'application/json'
-                    }, body: JSON.stringify(data)
-                });
+function myFunction2() {
+  var x = document.getElementById("answer2");
+  if (x.style.display === "none") {
+    x.style.display = "block";
+  } else {
+    x.style.display = "none";
+  }
+}
 
-                const jsonData = await response.json();
-
-                synthesizedDocContainer.innerHTML = jsonData.document;
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            data = {
-                'transcript_Id': form.elements.transcript.value,
-                'notes': form.elements.notes.value
-            }
-            postData(data);
-        });
-    </script>
-</body>
+function myFunction3() {
+  var x = document.getElementById("answer3");
+  if (x.style.display === "none") {
+    x.style.display = "block";
+  } else {
+    x.style.display = "none";
+  }
+}
+</script>

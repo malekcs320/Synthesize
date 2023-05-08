@@ -22,6 +22,11 @@ class Synthesizer:
         Please arrange the synthesized document with subtitles to help me follow the different parts: \
         the transcription: \n {input_transcript}\
         the notes : \n {input_notes} \n "
+        self.quizz_prompt = " based on this synthesis, \
+        give me a 3 question quizz with answers \
+        please generate it in a full stylized html format and differenciate answers from question. my fianl goal is to make the answers invesible at first and only show them when the user clicks on a button and make them visible when the user reclicks on it\
+        the synthesis: \n {input_document} \n "
+        self.quizz=""
         self.receive()
        
         
@@ -45,7 +50,7 @@ class Synthesizer:
             transcript_id=jsonbody["transcript_id"]
             notes_id=jsonbody["notes_id"]
             result=self.synthesize(transcript_id,notes_id)
-            self.synthesis_collection.insert_one({'name': 'first synthesis','text':result , 'transcript_id':transcript_id , 'notes_id':notes_id})
+            self.synthesis_collection.insert_one({'name': 'first synthesis','text':result , 'transcript_id':transcript_id , 'notes_id':notes_id , 'quizz': self.quizz})
 
         channel.basic_consume(queue='synthesize', on_message_callback=callback, auto_ack=True)
 
@@ -78,8 +83,23 @@ class Synthesizer:
         notes_dict = dict(notes)
         # Synthesize document using Synthesizer
         document = self.generate_summary(transcript_dict['text'], notes_dict['text'])
-
+        self.quizz=self.generate_quizz(document)
+        f = open("static/index.html", "w")
+        f.write(self.quizz)
+        f.close()
+        print(self.quizz)
         # Return synthesized document
         return document
+    def generate_quizz(self, document):
+        # Call the OpenAI API to generate a summary of the input text
+        response = openai.Completion.create(
+            engine=self.model_engine,
+            prompt=self.quizz_prompt.format(input_document=document),
+            max_tokens=1024,
+            n=1,
+            stop=None,
+            temperature=0,
+        )
+        return response.choices[0].text.strip()
 if __name__ == "__main__":
     synthesizer=Synthesizer()
