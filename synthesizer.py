@@ -1,24 +1,40 @@
 import openai
 from dotenv import load_dotenv
 import os ,json
-from db import Database
 import pika
 from bson import ObjectId
 from utils_recom import distances_from_embeddings, indices_of_nearest_neighbors_from_distances
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
+import time
 
 class Synthesizer:
     def __init__(self):
+        #load env variables
         load_dotenv()
-        db_uri = os.getenv("DB_URI")
-        db = Database(db_uri, 'myDataBase').db
-        self.name = "synthesis"
+
+        #connect to db and get collections
+        db_uri = os.getenv("MONGO_HOST")
+        db_name = os.getenv("DB_NAME")
+        db_port = os.getenv("MONGO_PORT")
+        client = MongoClient(host=db_uri, port=int(db_port), server_api=ServerApi('1'))
+       
+       # Send a ping to confirm a successful connection
+        try:
+            client.admin.command('ping')
+            print("Pinged your deployment. You successfully connected to MongoDB!")
+        except Exception as e:
+            print(e)
+
+        db = client[db_name]
         self.transcript_collection = db["transcripts"]
         self.notes_collection=db["notes"]
         self.synthesis_collection=db["synthesis"]
+
+        #openai prompts
         self.api_key = os.getenv("OPENAI_API_KEY")
         openai.api_key = self.api_key
         self.model_engine = "text-davinci-003"
-        # GPT-3 prompt
         self.prompt = " based on some notes I have taken in class and the this transcription of my professor lecture, \
         Please arrange the synthesized document with subtitles to help me follow the different parts: \
         the transcription: \n {input_transcript} \
@@ -29,10 +45,13 @@ class Synthesizer:
         please generate it in a full stylized html format and differenciate answers from question. my fianl goal is to make the answers invesible at first and only show them when the user clicks on a button and make them visible when the user reclicks on it\
         the synthesis: \n {input_document} \n "
         self.tags_prompt = " Extract keywords from this text:\n\n {input_document} \n "
+        
+        self.name = "synthesis"
+        self.text = ""
         self.quizz=""
         self.tags=""
-        self.embedding=[]
-        self.recommendations=""
+        self.embedding=list()
+        self.recommendations=list()
         self.receive()
        
         
@@ -61,6 +80,12 @@ class Synthesizer:
         )
         return response.choices[0].text.strip()
     
+    def generate_tags_embeds(self, tags):
+        tags_ = tags.replace("\n", " ")
+        self.embedding = openai.Embedding.create(input = [tags_], model="text-embedding-ada-002")['data'][0]['embedding']
+        return self.embedding
+    
+
     def generate_tags(self, document):
         response = openai.Completion.create(
             model="text-davinci-003",
@@ -71,20 +96,19 @@ class Synthesizer:
             presence_penalty=0.0,
             temperature=0.5
         )
-        return response.choices[0].text.strip()
+        tags = response.choices[0].text.strip()
+        self.generate_tags_embeds(tags)
+        return tags
 
-    def generate_tags_embeds(self, document):
-        tags = document.replace("\n", " ")
-        return openai.Embedding.create(input = [tags], model="text-embedding-ada-002")['data'][0]['embedding']
+    
 
-    def generate_recommendations(self, tags):
+    def generate_recommendations(self):
         recommendations = []
         # retrieve embeddings with id from db
         try:
             embeddings = self.synthesis_collection.find({}, {"_id": 1, "embedding": 1})
             embeddings = list(embeddings)
         except StopIteration:
-            print("No synthesis found in db")
             return []
 
         ids_dic = dict()
@@ -92,13 +116,10 @@ class Synthesizer:
             ids_dic[index] = embeddings[index]["_id"]
         # convert embeddings to list of lists
         embeddings = [embedding["embedding"] for embedding in embeddings]
-        # generate embeddings for tags
-        self.embedding = self.generate_tags_embeds(tags)
 
         # compute distances between tags and embeddings and keep only distances < 0.1
         distances = distances_from_embeddings(self.embedding, embeddings)
         distances = [distance for distance in distances if distance < 0.2]
-        print (f"length of recommendations {len(distances)}")
         indices = []
 
         if len(distances) >= 3:
@@ -112,9 +133,6 @@ class Synthesizer:
 
     def synthesize(self,transcript_id,notes_id):
         
-        # Retrieve transcript from db with transcript_id
-        # transcript_id=ObjectId(transcript_id)
-
         transcript=""
         notes=""
         try:
@@ -132,53 +150,47 @@ class Synthesizer:
         transcript_dict = dict(transcript)
         notes['_id'] = str(notes['_id'])
         notes_dict = dict(notes)
+
         # Synthesize document using Synthesizer
-        document = self.generate_summary(transcript_dict['text'], notes_dict['text'])
-        print("************************************\n")
-        f = open("static/synthesis.html", "w")
-        f.write(document)
-        f.close()
+        self.text = self.generate_summary(transcript_dict['text'], notes_dict['text'])
+       
         #generate tags
-        self.tags=self.generate_tags(document)
-        print(self.tags)
-        #generate recommendations
-        self.recommendations=self.generate_recommendations(self.tags)
-        f = open("static/recommendations.html", "w")
-        #convert recommendations to html
-        html = "<ul>"
-        for recommendation in self.recommendations:
-            html += f"<li>{recommendation['_id']}: {recommendation['name']}</li>"
-        html += "</ul>"
-        f.write(html)
-        f.close()
-        
-        print(self.recommendations)
+        self.tags=self.generate_tags(self.text)
+
+        #generate recommendations based on tags
+        self.recommendations=self.generate_recommendations()
+
         # generate quizz
-        self.quizz=self.generate_quizz(document)
-        f = open("static/quizz.html", "w")
-        f.write(self.quizz)
-        f.close()
-        # print(self.quizz)
-        # Return synthesized document
-        return document
-    
+        self.quizz=self.generate_quizz(self.text)
+        
+        entity = {'name': self.name,'text':self.text, 'transcript_id':transcript_id , 'notes_id':notes_id , 'quizz': self.quizz, 'tags': self.tags, 'embedding': self.embedding, 'recommendations': self.recommendations}
+
+        return entity
     
     
     def receive(self):
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        q_host = os.getenv('QUEUE_HOST')
+        q_name = os.getenv('QUEUE_NAME')
+
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=q_host))
         channel = connection.channel()
-        channel.queue_declare(queue='synthesize')
+        channel.queue_declare(queue=q_name)
 
         def callback(ch, method, properties, body):
             jsonbody=json.loads(body)
             transcript_id=jsonbody["transcript_id"]
             notes_id=jsonbody["notes_id"]
-            result=self.synthesize(transcript_id,notes_id)
-            self.synthesis_collection.insert_one({'name': self.name,'text':result , 'transcript_id':transcript_id , 'notes_id':notes_id , 'quizz': self.quizz, 'tags': self.tags, 'embedding': self.embedding, 'recommendations': self.recommendations})
+            print(f"received synthesis_id {transcript_id} and notes_id {notes_id}")
 
-        channel.basic_consume(queue='synthesize', on_message_callback=callback, auto_ack=True)
+            start = time.time()
+            entity = self.synthesize(transcript_id,notes_id)
+            end = time.time()
+            self.synthesis_collection.insert_one(entity)
+            
+            print(f"execution time: {end - start}")
+            
 
-        print(' [*] Waiting for messages. To exit press CTRL+C')
+        channel.basic_consume(queue=q_name, on_message_callback=callback, auto_ack=True)
         channel.start_consuming()
     
     
