@@ -27,8 +27,7 @@ class Synthesizer:
             print(e)
 
         db = client[db_name]
-        self.transcript_collection = db["transcripts"]
-        self.notes_collection=db["notes"]
+        self.files_collection = db["files"]
         self.synthesis_collection=db["synthesis"]
 
         #openai prompts
@@ -46,7 +45,7 @@ class Synthesizer:
         the synthesis: \n {input_document} \n "
         self.tags_prompt = " Extract keywords from this text:\n\n {input_document} \n "
         
-        self.name = "synthesis"
+        self.title = "synthesis"
         self.text = ""
         self.quizz=""
         self.tags=""
@@ -126,33 +125,28 @@ class Synthesizer:
             indices = indices_of_nearest_neighbors_from_distances(distances)[:3]
             _ids = [ids_dic[index] for index in indices]
             # retrieve synthesis names with indices
-            recommendations = self.synthesis_collection.find({"_id": {"$in": _ids}}, {"_id": 1, "name": 1})
+            recommendations = self.synthesis_collection.find({"_id": {"$in": _ids}}, {"_id": 1, "title": 1})
             recommendations = list(recommendations)
         return recommendations
 
 
-    def synthesize(self,transcript_id,notes_id):
+    def synthesize(self,file_id):
         
+        file = ""
         transcript=""
         notes=""
         try:
-            transcript = self.transcript_collection.find({"_id":ObjectId(transcript_id) }).limit(1).next()  
-            notes = self.notes_collection.find({"_id":ObjectId(notes_id) }).limit(1).next()  
+            file = self.files_collection.find({"_id":ObjectId(file_id) }).limit(1).next()
+            transcript = file['transcript']
+            notes = file['notes']  
         except StopIteration:
             print("Iteration Error")
-        if not transcript:
-            return "Transcript not found."
-        if not notes:
-            return "Notes not found."
+        if not file:
+            return "File not found."
         
-        #convert ObjectId to string
-        transcript['_id'] = str(transcript['_id'])
-        transcript_dict = dict(transcript)
-        notes['_id'] = str(notes['_id'])
-        notes_dict = dict(notes)
 
         # Synthesize document using Synthesizer
-        self.text = self.generate_summary(transcript_dict['text'], notes_dict['text'])
+        self.text = self.generate_summary(transcript, notes)
        
         #generate tags
         self.tags=self.generate_tags(self.text)
@@ -162,8 +156,8 @@ class Synthesizer:
 
         # generate quizz
         self.quizz=self.generate_quizz(self.text)
-        
-        entity = {'name': self.name,'text':self.text, 'transcript_id':transcript_id , 'notes_id':notes_id , 'quizz': self.quizz, 'tags': self.tags, 'embedding': self.embedding, 'recommendations': self.recommendations}
+
+        entity = {'title': self.title,'text':self.text , 'quizz': self.quizz, 'tags': self.tags, 'embedding': self.embedding, 'recommendations': self.recommendations, 'isPublic': True}
 
         return entity
     
@@ -178,16 +172,18 @@ class Synthesizer:
 
         def callback(ch, method, properties, body):
             jsonbody=json.loads(body)
-            transcript_id=jsonbody["transcript_id"]
-            notes_id=jsonbody["notes_id"]
-            print(f"received synthesis_id {transcript_id} and notes_id {notes_id}")
+            file_id=jsonbody["file_id"]
+            print(f"received file_id {file_id}")
 
             start = time.time()
-            entity = self.synthesize(transcript_id,notes_id)
+            entity = self.synthesize(file_id)
             end = time.time()
-            self.synthesis_collection.insert_one(entity)
-            
             print(f"execution time: {end - start}")
+            
+            new_synthesis = self.synthesis_collection.insert_one(entity)
+            print(f"synthesis {new_synthesis.inserted_id} created")
+            file = self.files_collection.find_one_and_update({"_id":ObjectId(file_id) }, {"$set": {"synthesis_id": new_synthesis.inserted_id}})
+            
             
 
         channel.basic_consume(queue=q_name, on_message_callback=callback, auto_ack=True)
