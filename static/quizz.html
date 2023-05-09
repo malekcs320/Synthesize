@@ -1,22 +1,27 @@
 <h1>Quantum Physics Quiz</h1>
 
-<div class="question">
-  <h3>Question 1: What is quantum superposition?</h3>
+<div class="quiz">
+  <h2>Question 1</h2>
+  <p>What is the concept of quantum superposition?</p>
   <button class="answer-button">Show Answer</button>
-  <p class="answer">Answer: Quantum superposition is the concept that a particle can exist in multiple states or locations simultaneously.</p>
+  <p class="answer">Quantum superposition is the concept that a particle can exist in multiple states or locations simultaneously.</p>
+  
+  <h2>Question 2</h2>
+  <p>What is entanglement?</p>
+  <button class="answer-button">Show Answer</button>
+  <p class="answer">Entanglement is where two or more particles can become linked in such a way that their states are dependent on each other, no matter how far apart they are in space.</p>
+  
+  <h2>Question 3</h2>
+  <p>What is the behavior of particles in the quantum realm?</p>
+  <button class="answer-button">Show Answer</button>
+  <p class="answer">The behavior of particles in the quantum realm is probabilistic, meaning that it is impossible to predict with certainty the outcome of a measurement or observation of a particle's state.</p>
 </div>
 
-<div class="question">
-  <h3>Question 2: What is entanglement?</h3>
-  <button class="answer-button">Show Answer</button>
-  <p class="answer">Answer: Entanglement is a phenomenon where two or more particles become linked in such a way that their states are dependent on each other, no matter how far apart they are in space.</p>
-</div>
-
-<div class="question">
-  <h3>Question 3: What is the behavior of particles in the quantum realm?</h3>
-  <button class="answer-button">Show Answer</button>
-  <p class="answer">Answer: The behavior of particles in the quantum realm is probabilistic, meaning that it is impossible to predict with certainty the outcome of a measurement or observation of a particle's state.</p>
-</div>
+<style>
+  .answer {
+    display: none;
+  }
+</style>
 
 <script>
   const answerButtons = document.querySelectorAll('.answer-button');
@@ -25,15 +30,11 @@
       const answer = button.nextElementSibling;
       if (answer.style.display === 'block') {
         answer.style.display = 'none';
+        button.innerText = 'Show Answer';
       } else {
         answer.style.display = 'block';
+        button.innerText = 'Hide Answer';
       }
     });
   });
 </script>
-
-<style>
-  .answer {
-    display: none;
-  }
-</style>
