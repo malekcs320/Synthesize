@@ -8,6 +8,6 @@ channel = connection.channel()
 channel.queue_declare(queue='synthesis')
 
 
-channel.basic_publish(exchange='', routing_key='synthesis', body="{\"file_id\":\"645a89204195998764c2d466\"}")
+channel.basic_publish(exchange='', routing_key='syntheses', body="{\"file_id\":\"645b7bd1948e0d0d573a68bb\"}")
 print(" [x] Sent file id ")
 connection.close()

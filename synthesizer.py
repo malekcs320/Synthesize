@@ -7,6 +7,7 @@ from utils_recom import distances_from_embeddings, indices_of_nearest_neighbors_
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 import time
+from datetime import datetime 
 
 class Synthesizer:
     def __init__(self):
@@ -39,10 +40,10 @@ class Synthesizer:
         Please arrange the synthesized document with subtitles to help me follow the different parts: \
         the transcription: \n {input_transcript} \
         the notes : \n {input_notes} . \
-        recommend 5 internet resources linked to this synthesis,please generate it  a full stylized html format  differenciate titles  paragraphs."
+        please generate it  a full stylized html format  differenciate titles  paragraphs."
         self.quizz_prompt = " based on this synthesis, \
         give me a 3 question quizz with answers \
-        please generate it in a full stylized html format and differenciate answers from question. my fianl goal is to make the answers invesible at first and only show them when the user clicks on a button and make them visible when the user reclicks on it\
+        please generate it in a full stylized html format and differenciate answers from question. my final goal is to make the answers invesible at first and only show them when the user clicks on a button and make them visible when the user reclicks on it\
         the synthesis: \n {input_document} \n "
         self.tags_prompt = " Extract keywords from this text:\n\n {input_document} \n "
         
@@ -177,7 +178,8 @@ class Synthesizer:
         def callback(ch, method, properties, body):
             jsonbody=json.loads(body)
             file_id=jsonbody["file_id"]
-            print(f"received file_id {file_id}")
+            now = datetime.now()
+            print(f" [x] Received {file_id} at {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
             start = time.time()
             entity = self.synthesize(file_id)
