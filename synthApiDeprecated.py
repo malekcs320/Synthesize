@@ -1,25 +1,33 @@
 from flask import Flask, jsonify, request, render_template
 from synthesizer import Synthesizer
-from db import Database
 from dotenv import load_dotenv
-from rabbitmq.receiver import Receiver
 import os
+from bson import ObjectId
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
 
 
 
 
-app = Flask(__name__, template_folder='static')
+app = Flask(__name__)
 load_dotenv()
-db_uri = os.getenv("DB_URI")
 
-db = Database(db_uri, 'myDataBase').db
 
-collection = db["transcripts"]
+#connect to db and get collections
+db_uri = os.getenv("MONGO_HOST")
+db_name = os.getenv("DB_NAME")
+db_port = os.getenv("MONGO_PORT")
+client = MongoClient(host=db_uri, port=int(db_port), server_api=ServerApi('1'))
 
-synthesizer = Synthesizer()
-receiver= Receiver()
-receiver.receive()
+# Send a ping to confirm a successful connection
+try:
+    client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(e)
 
+db = client[db_name]
+collection = db["synthesis"]
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -35,38 +43,28 @@ def index():
     
     return render_template('index.html')
 
-@app.route("/synthesize", methods=["POST"])
+@app.route("/synthesis", methods=["GET"])
 def synthesize():
-    
-    # Retrieve transcript id and notes from request and convert to int
-    transcript_id = int(request.get_json()['transcript_Id'])
-    
-    print(transcript_id)
-    notes = request.get_json()['notes']
-    print(notes)
-    # Retrieve transcript from db with transcript_id
-    transcript = collection.find({"id":transcript_id }).limit(1).next()  
-    print(transcript)
-    if not transcript:
-        return jsonify({"message": "Transcript not found."}), 404
-    
-    print(transcript)
-    #convert ObjectId to string
-    transcript['_id'] = str(transcript['_id'])
-    transcript_dict = dict(transcript)
-   
-    
-    print(notes)
+    _id = request.args.get('_id')    
 
-    if not notes:
-        return jsonify({"message": "Notes not provided."}), 400
 
-    # Synthesize document using Synthesizer
-    synthesizer = Synthesizer()
-    document = synthesizer.generate_summary(transcript_dict['text'], notes)
 
+    # check is string is valid ObjectId
+    if not ObjectId.is_valid(_id):
+        return jsonify({})
+    
+    synthesis = collection.find({"_id":ObjectId(_id) }).limit(1)
+    try:
+        synthesis = synthesis.next()
+    except StopIteration:
+        return jsonify({})
+
+
+    synthesis["_id"]=str(synthesis["_id"])
+    synthesis = dict(synthesis)
+    synthesis["recommendations"]  = [{'_id': str(rec['_id']), 'title': rec.get('title','NO TITLE'), 'tags': rec.get('tags','NO TAGS') } for rec in synthesis["recommendations"]]
     # Return synthesized document
-    return jsonify({"document": document})
+    return synthesis
 
 
     
@@ -74,4 +72,3 @@ def synthesize():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
