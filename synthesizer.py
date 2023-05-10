@@ -46,7 +46,8 @@ class Synthesizer:
         the synthesis: \n {input_document} \n "
         self.tags_prompt = " Extract keywords from this text:\n\n {input_document} \n "
         
-        self.title = "synthesis"
+        # TODO: Change title to be the name of the file 
+        self.title = ""
         self.text = ""
         self.quizz=""
         self.tags=""
@@ -106,7 +107,7 @@ class Synthesizer:
         recommendations = []
         # retrieve embeddings with id from db
         try:
-            embeddings = self.synthesis_collection.find({}, {"_id": 1, "embedding": 1})
+            embeddings = self.syntheses_collection.find({}, {"_id": 1, "embedding": 1})
             embeddings = list(embeddings)
         except StopIteration:
             return []
@@ -126,7 +127,7 @@ class Synthesizer:
             indices = indices_of_nearest_neighbors_from_distances(distances)[:3]
             _ids = [ids_dic[index] for index in indices]
             # retrieve synthesis names with indices
-            recommendations = self.synthesis_collection.find({"_id": {"$in": _ids}}, {"_id": 1, "title": 1})
+            recommendations = self.syntheses_collection.find({"_id": {"$in": _ids}}, {"_id": 1, "title": 1})
             recommendations = list(recommendations)
         return recommendations
 
@@ -146,6 +147,7 @@ class Synthesizer:
         if not file:
             return "File not found."
         
+        self.title = file['name']
 
         # Synthesize document using Synthesizer
         self.text = self.generate_summary(transcript, notes)
@@ -182,7 +184,7 @@ class Synthesizer:
             end = time.time()
             print(f"execution time: {end - start}")
             
-            new_synthesis = self.synthesis_collection.insert_one(entity)
+            new_synthesis = self.syntheses_collection.insert_one(entity)
             print(f"synthesis {new_synthesis.inserted_id} created")
             file = self.files_collection.find_one_and_update({"_id":ObjectId(file_id) }, {"$set": {"synthesis_id": new_synthesis.inserted_id}})
             
