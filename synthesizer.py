@@ -28,7 +28,8 @@ class Synthesizer:
 
         db = client[db_name]
         self.files_collection = db["files"]
-        self.synthesis_collection=db["synthesis"]
+        self.syntheses_collection=db["syntheses"]
+        self.transcripts_collection=db["transcripts"]
 
         #openai prompts
         self.api_key = os.getenv("OPENAI_API_KEY")
@@ -137,8 +138,9 @@ class Synthesizer:
         notes=""
         try:
             file = self.files_collection.find({"_id":ObjectId(file_id) }).limit(1).next()
-            transcript = file['transcript']
-            notes = file['notes']  
+            transcript_id = file['transcript_id']
+            transcript = self.transcripts_collection.find({"_id":ObjectId(transcript_id) }).limit(1).next()['text']
+            notes = file['notes']
         except StopIteration:
             print("Iteration Error")
         if not file:
@@ -157,7 +159,7 @@ class Synthesizer:
         # generate quizz
         self.quizz=self.generate_quizz(self.text)
 
-        entity = {'title': self.title,'text':self.text , 'quizz': self.quizz, 'tags': self.tags, 'embedding': self.embedding, 'recommendations': self.recommendations, 'isPublic': True}
+        entity = {'title': self.title,'text':self.text , 'quizz': self.quizz, 'tags': self.tags, 'embedding': self.embedding, 'recommendations': self.recommendations, 'isPublic': False}
 
         return entity
     
