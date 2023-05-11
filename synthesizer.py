@@ -34,15 +34,19 @@ class Synthesizer:
         self.api_key = os.getenv("OPENAI_API_KEY")
         openai.api_key = self.api_key
         self.model_engine = "text-davinci-003"
-        self.prompt = " based on some notes I have taken in class and the this transcription of my professor lecture, \
-        Please arrange the synthesized document with subtitles to help me follow the different parts: \
-        the transcription: \n {input_transcript} \
-        the notes : \n {input_notes} . \
-        recommend 5 internet resources linked to this synthesis,please generate it  a full stylized html format  differenciate titles  paragraphs."
-        self.quizz_prompt = " based on this synthesis, \
-        give me a 3 question quizz with answers \
-        please generate it in a full stylized html format and differenciate answers from question. my fianl goal is to make the answers invesible at first and only show them when the user clicks on a button and make them visible when the user reclicks on it\
-        the synthesis: \n {input_document} \n "
+        self.prompt = " Can you please help me generate a synthesis document to aid me in my studies using my class \
+                        notes and lecture transcription? Please use the information from both sources to provide a \
+                        comprehensive overview of the key concepts, themes, and ideas covered in the class.\n \
+                        the transcription: \n {input_transcript} \
+                        the notes : \n {input_notes}  \n \
+                        Please generate your prompt in a fully stylized html format and differenciate titles from paragraphs."
+        
+        self.quizz_prompt = "Using the provided synthesis document, please generate a 5-question quiz with \
+                            answers in a HTML format. The prompt for each question should test \
+                            the user's understanding of the key concepts, themes, and ideas covered in the synthesis \
+                            document. Please ensure that the questions and answers are grammatically correct and \
+                            contextually appropriate. The synthesis document is as follows: \n {input_document}"
+        
         self.tags_prompt = " Extract keywords from this text:\n\n {input_document} \n "
         
         self.title = "synthesis"
@@ -55,7 +59,6 @@ class Synthesizer:
        
         
     def generate_summary(self, transcript, notes):
-        # Call the OpenAI API to generate a summary of the input text
         response = openai.Completion.create(
             engine=self.model_engine,
             prompt=self.prompt.format(input_transcript=transcript, input_notes=notes),
@@ -68,7 +71,6 @@ class Synthesizer:
     
 
     def generate_quizz(self, document):
-        # Call the OpenAI API to generate a summary of the input text
         response = openai.Completion.create(
             engine=self.model_engine,
             prompt=self.quizz_prompt.format(input_document=document),
@@ -143,9 +145,8 @@ class Synthesizer:
             print("Iteration Error")
         if not file:
             return "File not found."
-        
 
-        # Synthesize document using Synthesizer
+        #Synthesize document using Synthesizer
         self.text = self.generate_summary(transcript, notes)
        
         #generate tags
