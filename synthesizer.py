@@ -133,7 +133,7 @@ class Synthesizer:
             indices = indices_of_nearest_neighbors_from_distances(distances)[:3]
             _ids = [ids_dic[index] for index in indices]
             # retrieve synthesis names with indices
-            recommendations = self.syntheses_collection.find({"_id": {"$in": _ids}}, {"_id": 1, "title": 1})
+            recommendations = self.syntheses_collection.find({"_id": {"$in": _ids}}, {"_id": 1, "title": 1, "tags": 1})
             recommendations = list(recommendations)
         return recommendations
 
@@ -203,3 +203,4 @@ class Synthesizer:
     
 if __name__ == "__main__":
     synthesizer=Synthesizer()
+    

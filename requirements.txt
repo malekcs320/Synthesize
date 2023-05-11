@@ -2,3 +2,5 @@ python-dotenv
 openai
 pymongo
 pika
+numpy
+scipy
